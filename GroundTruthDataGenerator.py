@@ -2,13 +2,14 @@ import cv2
 import numpy as np
 from threading import Thread
 from pathlib import Path
-import sys
 
 
 class ImageCapturer:
     def __init__(self):
+        #### ROI origin point and dimensions
         self.rectOriginPoint = np.zeros(2, dtype=np.int8)
         self.rectDims = np.zeros(2, dtype=np.int8)
+
         self.mouseDown = False
         self.saveFrames = False
         self.stopInputFeed = False
@@ -28,9 +29,8 @@ class ImageCapturer:
 
     def createDirectory(self, path):
         """
-        Create path or provided path if it doesn't exist
+        Create provided path (including folder) if it doesn't exist
         :param path: String
-        :return:
         """
         classFolderPath = Path(path)
         if not classFolderPath.exists():
@@ -38,7 +38,7 @@ class ImageCapturer:
 
     def mouseEventHandler(self, event, x, y, flags, params):
         """
-        Handle mouse events . Currently handles LMB and Mouse move
+        Handle mouse events. Currently handles LMB and Mouse move
         """
         if event == cv2.EVENT_LBUTTONDOWN:
             self.mouseDown = True
@@ -66,7 +66,7 @@ class ImageCapturer:
 
     def webcamFeedRead(self):
         """
-        Read webcam frame
+        Read webcam frame and save in self.frame class variable
         """
         cap = cv2.VideoCapture(0)
         while not self.stopInputFeed:
@@ -172,12 +172,13 @@ class ImageCapturer:
         Thread(target=self.webcamFeedRead, args=()).start()
         Thread(target=self.webcamFeedShow, args=()).start()
 
-    def test(self):
+    def viewAnnotatedImage(self):
         img = cv2.imread("train/five/five_0_ann.jpg", 0)
-        img[img >= 0] = 1
+        # img[img >= 0] = 1
         cv2.imshow("Binary", img*255)
         cv2.waitKey(0)
 
+
 imageHandler = ImageCapturer()
-imageHandler.main()
-# imageHandler.test()
+# imageHandler.main()
+imageHandler.viewAnnotatedImage()
