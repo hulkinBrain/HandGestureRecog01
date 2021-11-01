@@ -26,7 +26,6 @@ class ImageCapturer:
         self.className = "Class1"
         self.imageToBeSaved = np.array([])
 
-
     def createDirectory(self, path):
         """
         Create path or provided path if it doesn't exist
@@ -99,16 +98,17 @@ class ImageCapturer:
                     if np.all(roi.shape) > 0 and self.roi.shape == roi.shape:
                         grayCurrRoi = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
                         mu, std = cv2.meanStdDev(grayCurrRoi)
-                        grayCurrRoi[grayCurrRoi < mu + self.threshold/100.0 * std] = 255
-                        grayCurrRoi[grayCurrRoi < 255] = 0
+                        grayCurrRoi[grayCurrRoi <= mu + self.threshold/100.0 * std] = 255
+                        (thresh, grayCurrRoi) = cv2.threshold(grayCurrRoi, 250, 255, cv2.THRESH_BINARY)
                         grayCurrRoi = cv2.medianBlur(grayCurrRoi, 5)
                         grayCurrRoi = cv2.morphologyEx(grayCurrRoi, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
-                        # grayCurrRoi = cv2.morphologyEx(grayCurrRoi, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
-                        self.annotated = cv2.cvtColor(grayCurrRoi, cv2.COLOR_GRAY2BGR)
+                        grayCurrRoi = cv2.morphologyEx(grayCurrRoi, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+                        self.annotated = (grayCurrRoi/255).astype(np.uint8)
+                        annotated = cv2.cvtColor(grayCurrRoi, cv2.COLOR_GRAY2BGR)
 
                     else:
-                        self.annotated = roi
-                    roiAndAnnotated = np.concatenate((roi, self.annotated), axis=1)
+                        self.annotated, annotated = roi, roi
+                    roiAndAnnotated = np.concatenate((roi, annotated), axis=1)
                     if np.all(roi.shape) > 0:
                         cv2.imshow("ROI", roiAndAnnotated)
                         self.roi = roi
@@ -122,7 +122,6 @@ class ImageCapturer:
                 #### Toggle frame writing "saveFrames" variable when "Spacebar" is pressed
                 elif keyInput == ord(" "):
                     self.saveFrames = not self.saveFrames
-
                     #### To create className directory if doesn't exist
                     self.createDirectory(f"{self.trainingDataFolderName}/{self.className}")
                     if self.saveFrames:
@@ -159,8 +158,10 @@ class ImageCapturer:
                 if userInput[0] is not None and userInput[0] != "qq":
                     self.className = userInput[0]
                     print(f"\"{self.className}\" set as class for subsequent frames\n")
+                    #### Reset frameNumber to start from 0 for the new class
+                    self.frameNumber = 0
                     break
-                elif self.className == "qq":
+                elif userInput[0] == "qq":
                     break
                 else:
                     print("Classname cannot be empty\n")
@@ -171,6 +172,12 @@ class ImageCapturer:
         Thread(target=self.webcamFeedRead, args=()).start()
         Thread(target=self.webcamFeedShow, args=()).start()
 
+    def test(self):
+        img = cv2.imread("train/five/five_0_ann.jpg", 0)
+        img[img >= 0] = 1
+        cv2.imshow("Binary", img*255)
+        cv2.waitKey(0)
 
 imageHandler = ImageCapturer()
 imageHandler.main()
+# imageHandler.test()
