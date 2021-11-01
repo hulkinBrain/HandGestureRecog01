@@ -16,6 +16,7 @@ class ImageCapturer:
         #### Frame and ROI Mat
         self.frame = np.array([])
         self.roi = np.array([])
+        self.annotated = np.array([])
         self.threshold = 0
 
         #### Frame writing parameters
@@ -49,7 +50,7 @@ class ImageCapturer:
             if np.all((self.rectOriginPoint > 0)) and np.all((self.rectDims > 0)):
                 cv2.destroyWindow("ROI")
                 cv2.namedWindow("ROI", cv2.WINDOW_AUTOSIZE)
-                cv2.createTrackbar('slider', "ROI", self.threshold, 100, self.on_change)
+                cv2.createTrackbar('1 StdDev percentage', "ROI", self.threshold, 100, self.on_change)
 
             self.rectOriginPoint = np.array([x, y])
             self.rectDims = np.array([x, y])
@@ -82,7 +83,7 @@ class ImageCapturer:
         """
         cv2.namedWindow("WebcamFeed", cv2.WINDOW_AUTOSIZE)
         cv2.namedWindow("ROI", cv2.WINDOW_AUTOSIZE)
-        cv2.createTrackbar('slider', "ROI", self.threshold, 100, self.on_change)
+        cv2.createTrackbar('1 StdDev%', "ROI", self.threshold, 100, self.on_change)
         rectBorderWidth = 1
         while not self.stopInputFeed:
 
@@ -100,12 +101,14 @@ class ImageCapturer:
                         mu, std = cv2.meanStdDev(grayCurrRoi)
                         grayCurrRoi[grayCurrRoi < mu + self.threshold/100.0 * std] = 255
                         grayCurrRoi[grayCurrRoi < 255] = 0
-                        closing = cv2.morphologyEx(grayCurrRoi, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
-                        annotated = cv2.cvtColor(closing, cv2.COLOR_GRAY2BGR)
+                        grayCurrRoi = cv2.medianBlur(grayCurrRoi, 5)
+                        grayCurrRoi = cv2.morphologyEx(grayCurrRoi, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+                        # grayCurrRoi = cv2.morphologyEx(grayCurrRoi, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+                        self.annotated = cv2.cvtColor(grayCurrRoi, cv2.COLOR_GRAY2BGR)
 
                     else:
-                        annotated = roi
-                    roiAndAnnotated = np.concatenate((roi, annotated), axis=1)
+                        self.annotated = roi
+                    roiAndAnnotated = np.concatenate((roi, self.annotated), axis=1)
                     if np.all(roi.shape) > 0:
                         cv2.imshow("ROI", roiAndAnnotated)
                         self.roi = roi
@@ -133,7 +136,10 @@ class ImageCapturer:
 
                 #### Save roi frames to className folder
                 if self.saveFrames:
+                    # RGB Image
                     cv2.imwrite(f"{self.trainingDataFolderName}/{self.className}/{self.className}_{self.frameNumber}.jpg", self.roi)
+                    # Annotated Image
+                    cv2.imwrite(f"{self.trainingDataFolderName}/{self.className}/{self.className}_{self.frameNumber}_ann.jpg", self.annotated)
                     self.frameNumber += 1
                     print(f"Image count: {self.frameNumber}", end="\r")
         cv2.destroyAllWindows()
